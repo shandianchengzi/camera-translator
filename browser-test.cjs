@@ -13,6 +13,8 @@ const {calculate,targetForEdge}=require('./calculator.js');
     const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto('http://127.0.0.1:8765');
     assert.equal(await page.locator('.lens').count(),2);
+    assert.equal(await page.locator('.lens:not([hidden])').count(),1);
+    assert.equal(await page.locator('#model').count(),0);
     assert.equal(await page.locator('#target-reference option').count(),2);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=window.innerHeight));
     assert.ok(await page.locator('.base-scene').isVisible());
@@ -41,6 +43,7 @@ const {calculate,targetForEdge}=require('./calculator.js');
     await page.fill('#target-zoom','3');assert.equal(Number(await page.inputValue('#target')),300);
     await third.locator('[data-field="focal"]').fill('120');assert.equal(Number(await page.inputValue('#target')),360);
     await page.selectOption('#output-preset','9:16');
+    await page.selectOption('#demo-lens',customId);
     await move('.lens:nth-child(3) .resolution-slider',3840);
     const expectedPortrait=targetForEdge({focal:120,totalPixels:200000000,sw:1,sh:1},3840,{w:9,h:16});
     assert.ok(Math.abs(Number(await page.inputValue('#target'))-expectedPortrait)<1e-5);
@@ -61,6 +64,8 @@ const {calculate,targetForEdge}=require('./calculator.js');
     assert.equal(await page.inputValue('#output-preset'),'9:16');
     assert.ok((await page.locator('#zoom-image').getAttribute('src')).startsWith('data:image/jpeg;base64,'));
     assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('camera-translator:v1')).cropCenter),savedCrop);
+    await third.locator('summary').click();assert.equal(await third.getAttribute('open'),null);
+    await third.locator('summary').click();
     await third.locator('.remove').click();assert.equal(await page.locator('.lens').count(),2);
     assert.equal(await page.inputValue('#target-reference'),'lens:main');
     await page.fill('#target','');assert.ok((await page.locator('#global-error').textContent()).length>0);
@@ -85,9 +90,9 @@ const {calculate,targetForEdge}=require('./calculator.js');
     for(const viewport of [{width:1280,height:720},{width:1440,height:900}]){
       await page.setViewportSize(viewport);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight));
-      const rects=await page.evaluate(()=>['.base-scene','.zoom-scene','.lens:first-child','.lens:nth-child(2)'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {selector:s,top:r.top,bottom:r.bottom,height:r.height};}));
+      const rects=await page.evaluate(()=>['.base-scene','.zoom-scene','.lens:not([hidden])'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {selector:s,top:r.top,bottom:r.bottom,height:r.height};}));
       console.log('Viewport bounds',JSON.stringify({viewport,rects}));
-      for(const rect of rects){assert.ok(rect.height>50);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport: '+JSON.stringify({viewport,rect}));}
+      for(const rect of rects){assert.ok(rect.height>20);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport: '+JSON.stringify({viewport,rect}));}
     }
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement, one-screen desktop layout and mobile parameter drawer.');
