@@ -45,14 +45,9 @@ function setTarget(value){
 }
 function lensCard(id){return Array.from(document.querySelectorAll('.lens')).find(x=>x.dataset.id===id);}
 function formatPixelInput(input){
-  const raw=input.value, digits=raw.replace(/[,，\s]/g,'');
-  if(!/^\d+$/.test(digits)||digits.length>12)return raw;
-  const digitPosition=raw.slice(0,input.selectionStart??raw.length).replace(/[,，\s]/g,'').length;
-  const formatted=formatPixels(digits);input.value=formatted;
-  let cursor=0,count=0;
-  while(cursor<formatted.length&&count<digitPosition){if(/\d/.test(formatted[cursor]))count++;cursor++;}
-  input.setSelectionRange(cursor,cursor);
-  return digits;
+  // Never rewrite an active input: doing so can replay mobile/IME edits.
+  const raw=input.value,digits=raw.replace(/[,，\s]/g,'');
+  return /^\d+$/.test(digits)&&digits.length<=12?digits:raw;
 }
 function setupLenses(){
   const parent=$('#lenses'),parameters=$('#lens-parameters');parent.replaceChildren();parameters.replaceChildren();
@@ -67,7 +62,19 @@ function setupLenses(){
     param.querySelectorAll('[data-field]').forEach(input=>{
       const field=input.dataset.field;
       input.value=field==='totalPixels'&&Number.isFinite(parsePixels(lens[field]))?formatPixels(parsePixels(lens[field])):lens[field];
-      input.addEventListener(input.tagName==='SELECT'?'change':'input',()=>{
+      if(field==='totalPixels'){
+        input.addEventListener('focus',()=>{
+          const raw=input.value,digits=raw.replace(/[,，\s]/g,'');
+          if(!/^\d+$/.test(digits))return;
+          const start=raw.slice(0,input.selectionStart??raw.length).replace(/[,，\s]/g,'').length;
+          const end=raw.slice(0,input.selectionEnd??raw.length).replace(/[,，\s]/g,'').length;
+          input.value=digits;input.setSelectionRange(start,end);
+        });
+        input.addEventListener('blur',()=>{const value=parsePixels(input.value);if(Number.isFinite(value))input.value=formatPixels(value);});
+        input.addEventListener('compositionend',()=>input.dispatchEvent(new Event('input',{bubbles:true})));
+      }
+      input.addEventListener(input.tagName==='SELECT'?'change':'input',event=>{
+        if(field==='totalPixels'&&event.isComposing)return;
         lens[field]=field==='totalPixels'?formatPixelInput(input):input.value;
         if(field==='sensorPreset'&&input.value!=='custom'){
           [lens.sw,lens.sh]=input.value.split(':').map(Number);
