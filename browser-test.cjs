@@ -8,11 +8,14 @@ const {calculate,targetForEdge}=require('./calculator.js');
   try{
     for(let i=0;i<50;i++){try{if((await fetch('http://127.0.0.1:8765')).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
     browser=await chromium.launch({headless:true});
-    const context=await browser.newContext({viewport:{width:390,height:844}});
+    const context=await browser.newContext({viewport:{width:1366,height:768}});
     await context.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:8765')?route.continue():route.abort());
     const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto('http://127.0.0.1:8765');
     assert.equal(await page.locator('.lens').count(),2);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=window.innerHeight));
+    assert.ok(await page.locator('.base-scene').isVisible());
+    assert.ok(await page.locator('.resolution-slider').first().isVisible());
     assert.equal(await page.locator('[data-field="totalPixels"]').first().inputValue(),'5000,0000');
     await page.selectOption('#target-reference','lens:tele');
     await page.fill('#target-zoom','4');
@@ -26,7 +29,7 @@ const {calculate,targetForEdge}=require('./calculator.js');
     const expected=targetForEdge({focal:23,totalPixels:50000000,sw:1,sh:1},2048,{w:16,h:9});
     assert.ok(Math.abs(Number(await page.inputValue('#target'))-expected)<1e-5);
     await page.click('#add');
-    const third=page.locator('.lens').nth(2);
+    const third=page.locator('.lens-param').nth(2);
     await third.locator('[data-field="name"]').fill('自定义测试镜头');
     await third.locator('[data-field="focal"]').fill('100');
     await third.locator('[data-field="totalPixels"]').fill('200000000');
@@ -67,7 +70,22 @@ const {calculate,targetForEdge}=require('./calculator.js');
     assert.equal(await page.locator('[data-field="totalPixels"]').first().inputValue(),'2,0000,0000');
     assert.equal(await page.locator('[data-field="focal"]').nth(1).inputValue(),'85');
     assert.equal(await page.inputValue('#demo-lens'),'tele');
+    await page.setViewportSize({width:390,height:844});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight));
+    await page.click('#toggle-sidebar');
+    assert.equal(await page.getAttribute('#toggle-sidebar','aria-expanded'),'true');
+    await page.fill('#target','250');assert.equal(Number(await page.inputValue('#target')),250);
+    await page.click('#close-sidebar');
+    assert.equal(await page.getAttribute('#toggle-sidebar','aria-expanded'),'false');
+    assert.ok(await page.locator('.base-scene').isVisible());
+    assert.ok(await page.locator('.resolution-slider').first().isVisible());
+    for(const viewport of [{width:1280,height:720},{width:1440,height:900}]){
+      await page.setViewportSize(viewport);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight));
+      const rects=await page.evaluate(()=>['.base-scene','.zoom-scene','.lens:first-child','.lens:nth-child(2)'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height};}));
+      for(const rect of rects){assert.ok(rect.height>50);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport');}
+    }
     assert.deepEqual(errors,[]);
-    console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement and mobile layout.');
+    console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement, one-screen desktop layout and mobile parameter drawer.');
   }finally{if(browser)await browser.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

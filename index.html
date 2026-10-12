@@ -7,18 +7,20 @@
   <link rel="stylesheet" href="style.css"><script defer src="calculator.js"></script><script defer src="app.js"></script>
 </head>
 <body>
-<header><a class="brand" href="./"><span class="logo">◎</span> CAMERA <b>TRANSLATOR</b></a><span class="local" id="save-status" role="status">保存在此浏览器</span></header>
-<main>
-  <section class="intro"><div class="eyebrow">焦距 / 倍数 / 像素</div><h1>拉近一点，<br>还能留下多少细节？</h1><p>只有手机也能用：输入相机显示的变焦倍数，看看主摄和长焦还能留下多少像素，以及该选 1K、2K 还是 4K。</p></section>
+<header><a class="brand" href="./"><span class="logo">◎</span> CAMERA <b>TRANSLATOR</b></a><span class="header-caption">等效焦距 · 倍数 · 像素</span><span class="local" id="save-status" role="status">保存在此浏览器</span><button id="toggle-sidebar" class="primary" aria-controls="sidebar" aria-expanded="false">参数</button></header>
+<main class="workspace-shell">
+  <button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="关闭参数栏" hidden></button>
+  <aside id="sidebar" class="sidebar" aria-label="镜头和目标参数">
+  <div class="sidebar-heading"><h1>调整参数</h1><button id="close-sidebar" class="quiet">收起 ×</button></div>
   <section class="panel settings" aria-labelledby="settings-title">
     <div class="section-title"><h2 id="settings-title">共同拍摄目标</h2><button id="reset" class="quiet">恢复示例</button></div>
-    <p class="equivalent-note">这里全部使用 <strong>35mm 等效焦距</strong>。请在参数或照片详情里找“等效焦距／35mm 等效”，不要混用镜头实际焦距；同一实际焦距搭配不同传感器，等效焦距会不同。</p>
+    <p class="equivalent-note">这里的焦距均指等效焦距，当你填写自己的镜头的参数时，需要去查询等效焦距，而不是查询物理焦距，否则计算将会出现差错。</p>
     <div class="phone-settings">
       <label>倍数相对哪个镜头？ <select id="target-reference"></select></label>
       <label>相对所选镜头的放大倍数 <div class="unit-input"><input id="target-zoom" type="number" min="0.000001" step="any"><span>×</span></div></label>
       <p id="target-equation" class="phone-equation" aria-live="polite"></p>
     </div>
-    <p class="hint">填好下方镜头参数后，直接修改焦距、倍数，或拖动取景／分辨率滑块：它们都会改变同一个目标，全部镜头一起重算。如果输入手机相机显示的倍数，请选择主摄作为基准。</p>
+    <p class="hint">焦距、倍数与右侧滑块同步联动。填写手机相机显示的倍数时，请选择自己的主摄作为基准。</p>
     <div class="settings-grid">
       <label>目标等效焦距 <div class="unit-input"><input id="target" type="number" min="0.01" max="100000" step="any"><span>mm</span></div></label>
       <label>成片比例 <select id="output-preset"><option value="16:9">16:9 横屏</option><option value="9:16">9:16 竖屏</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="custom">自定义</option></select></label>
@@ -26,22 +28,28 @@
       <label>高 <input id="output-h" type="number" min="0.01" max="100" step="any"></label>
       <label class="model-select">像素计算口径 <select id="model"><option value="linear">总像素 ÷ 放大倍数（指定算法）</option><option value="area">总像素 ÷ 倍数²（几何裁切）</option></select></label>
     </div>
+    <details class="reference-settings"><summary>人眼／手机／Pocket 4 比较基准</summary>
     <div class="reference-heading">200mm 是多大的放大倍数？<span>基准焦距可修改</span></div>
     <div id="references" class="references"></div>
+    </details>
     <p class="hint" id="model-note"></p><div id="global-error" class="error" role="alert"></div>
   </section>
-  <section aria-labelledby="lenses-title"><div class="section-title lens-title"><h2 id="lenses-title">参与对比的镜头</h2><button id="add" class="primary">＋ 添加镜头</button></div><p class="lens-intro hint">从手机官网参数或照片详情查找各镜头的“35mm 等效焦距”和支持像素。实际焦距受传感器尺寸影响，不能直接填到这里；如果只看到实际焦距，请继续查等效焦距。五千万填 5000,0000，两亿填 2,0000,0000；默认值仅用于测试。优先填当前拍摄模式的有效像素，不知道传感器比例时可先用方形估算。设置自动保存，下次打开继续计算。</p><div id="lenses" class="lenses"></div></section>
+  <section class="lens-parameters-section" aria-labelledby="lenses-title"><div class="section-title lens-title"><h2 id="lenses-title">参与对比的镜头</h2><button id="add" class="primary">＋ 镜头</button></div><p class="lens-intro hint">查各镜头的等效焦距和支持像素。五千万填 5000,0000，两亿填 2,0000,0000；默认值仅供测试，优先填当前拍摄模式的像素。设置自动保存。</p><div id="lens-parameters"></div></section>
+  <details class="panel explanation"><summary>这些数字如何计算？</summary><div><p>焦距均按 <strong>35mm 等效焦距</strong>填写。镜头实际焦距需要结合传感器尺寸才能换算，不能与这里的等效焦距混用；请查厂商参数或照片详情中的等效焦距。放大倍数 = 目标焦距 ÷ 基准焦距。人眼 50mm 是本工具采用的比较基准，不代表人眼全部视野；手机 23mm 与 Pocket 4 的 20mm 是用户指定的可编辑预设。</p><p>默认按指定算法：剩余像素 = 总像素 ÷ 倍数。可切换为几何裁切：剩余像素 = 总像素 ÷ 倍数²。目标焦距低于镜头焦距时，保留原始像素，并提示该镜头不能通过裁切获得更广视野。</p><p>若传感器比例为 a:b，剩余像素为 P：宽 = √(P × a/b)，高 = √(P × b/a)。随后用长边和短边匹配成片方向，居中裁切到成片比例，<strong>不插值补像素</strong>。方形传感器边长 4000 时，16:9 为 4000 × 2250，9:16 为 2250 × 4000。非方形传感器或特殊成片比例会受短边限制。</p><p>分辨率尺按成片长边比较：1K = 1024、2K = 2048、4K = 3840（UHD）、8K = 7680。建议按长边向上选择一档；超过 8K 则建议 8K，并注明超出范围。这里的“建议”是录制档位选择，不保证设备提供该档位，也不会增加真实细节。</p><p>这只是像素预算，不代表实际清晰度。光学变焦与换用长焦镜头本身不损失该镜头的传感器像素；光线、镜头、稳定性、合并像素及视频读取方式都会影响结果。示例 5000,0000 像素与方形传感器均为可修改的测试值。像素数使用纯数字，从右往左每四位添加逗号，按“万、亿”分组：5000,0000 是五千万，2,0000,0000 是两亿。</p></div></details>
+  <div class="sidebar-footer"><span>照片与参数只保存在此浏览器</span><a href="https://github.com/shandianchengzi/camera-translator" target="_blank" rel="noopener">GitHub ↗</a></div>
+  </aside>
+  <div class="view-workspace">
   <section class="panel demo" aria-labelledby="demo-title">
     <div class="section-title"><h2 id="demo-title">拖动查看取景效果</h2><label class="demo-select">演示镜头 <select id="demo-lens"></select></label></div>
-    <p class="hint">相同机位下，倍数越大，看到的范围越小。拖动左图白框，或点击图片选取位置，右侧会显示对应的放大画面。</p>
-    <div class="photo-actions"><label class="upload-button" for="photo-upload">＋ 换成自己的照片</label><input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" hidden><button id="reset-photo" class="quiet">恢复示例照片</button><span id="photo-status" role="status">照片只保存在此浏览器</span></div>
+    <p class="hint demo-hint">拖动左图白框选择位置；下方滑块调整共同目标，右图同步放大。</p>
+    <div class="photo-actions"><label class="upload-button" for="photo-upload">换照片</label><input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" hidden><button id="reset-photo" class="quiet">示例照片</button><span id="photo-status" role="status">照片只保存在此浏览器</span></div>
     <div class="demo-grid"><div><div class="demo-label">原始视野 <b id="base-label"></b></div><div class="scene base-scene"><img class="scene-img" alt="用于演示取景范围的山湖风景" src="scene.svg"><div id="crop-frame" tabindex="0" role="group" aria-label="可移动取景框，方向键调整取景位置"><span id="crop-label"></span></div></div></div><div><div class="demo-label">目标视野 <b id="zoom-label"></b></div><div class="scene zoom-scene"><img id="zoom-image" class="scene-img" alt="放大后的取景范围" src="scene.svg"></div></div></div>
     <div class="view-control"><label for="view-zoom">拖动调整目标放大倍数 <b id="view-zoom-value"></b></label><input id="view-zoom" type="range" min="1" max="100" step="0.01" aria-label="相对演示镜头的放大倍数"><div class="view-ticks"><span>1× · 更广</span><span id="view-max-label">100× · 更近</span></div></div>
     <p id="demo-note" class="hint"></p>
   </section>
-  <details class="panel explanation"><summary>这些数字如何计算？</summary><div><p>焦距均按 <strong>35mm 等效焦距</strong>填写。镜头实际焦距需要结合传感器尺寸才能换算，不能与这里的等效焦距混用；请查厂商参数或照片详情中的等效焦距。放大倍数 = 目标焦距 ÷ 基准焦距。人眼 50mm 是本工具采用的比较基准，不代表人眼全部视野；手机 23mm 与 Pocket 4 的 20mm 是用户指定的可编辑预设。</p><p>默认按指定算法：剩余像素 = 总像素 ÷ 倍数。可切换为几何裁切：剩余像素 = 总像素 ÷ 倍数²。目标焦距低于镜头焦距时，保留原始像素，并提示该镜头不能通过裁切获得更广视野。</p><p>若传感器比例为 a:b，剩余像素为 P：宽 = √(P × a/b)，高 = √(P × b/a)。随后用长边和短边匹配成片方向，居中裁切到成片比例，<strong>不插值补像素</strong>。方形传感器边长 4000 时，16:9 为 4000 × 2250，9:16 为 2250 × 4000。非方形传感器或特殊成片比例会受短边限制。</p><p>分辨率尺按成片长边比较：1K = 1024、2K = 2048、4K = 3840（UHD）、8K = 7680。建议按长边向上选择一档；超过 8K 则建议 8K，并注明超出范围。这里的“建议”是录制档位选择，不保证设备提供该档位，也不会增加真实细节。</p><p>这只是像素预算，不代表实际清晰度。光学变焦与换用长焦镜头本身不损失该镜头的传感器像素；光线、镜头、稳定性、合并像素及视频读取方式都会影响结果。示例 5000,0000 像素与方形传感器均为可修改的测试值。像素数使用纯数字，从右往左每四位添加逗号，按“万、亿”分组：5000,0000 是五千万，2,0000,0000 是两亿。</p></div></details>
+  <section class="comparison" aria-labelledby="comparison-title"><div class="comparison-heading"><h2 id="comparison-title">同一目标，各镜头还能留下多少细节？</h2><span>拖动分辨率滑块可反算目标</span></div><div id="lenses" class="lenses"></div></section>
+  </div>
 </main>
-<footer>Camera Translator <span>纯本地计算 · 无需登录</span><a href="https://github.com/shandianchengzi/camera-translator" target="_blank" rel="noopener">GitHub ↗</a></footer>
 <template id="lens-template">
   <article class="panel lens"><div class="lens-heading"><div class="lens-number"></div><input class="lens-name" data-field="name" aria-label="镜头名称" maxlength="60"><button class="remove quiet" aria-label="删除镜头">删除</button></div>
     <div class="lens-inputs"><label>镜头 35mm 等效焦距 <div class="unit-input"><input data-field="focal" type="number" min="0.01" max="100000" step="any"><span>mm</span></div></label><label>镜头支持的总像素 <input data-field="totalPixels" type="text" inputmode="numeric" maxlength="24" placeholder="例如 5000,0000" aria-label="镜头总像素，填写纯数字"></label><label>传感器比例 <select data-field="sensorPreset"><option value="1:1">1:1 方形</option><option value="4:3">4:3</option><option value="3:2">3:2</option><option value="16:9">16:9</option><option value="custom">自定义</option></select></label><div class="sensor-custom"><label>宽<input data-field="sw" type="number" min="0.01" max="100" step="any"></label><span>:</span><label>高<input data-field="sh" type="number" min="0.01" max="100" step="any"></label></div></div>

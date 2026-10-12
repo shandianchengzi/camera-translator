@@ -68,29 +68,33 @@ function formatPixelInput(input){
   return digits;
 }
 function setupLenses(){
-  const parent=$('#lenses');parent.replaceChildren();
+  const parent=$('#lenses'),parameters=$('#lens-parameters');parent.replaceChildren();parameters.replaceChildren();
   state.lenses.forEach((lens,i)=>{
-    const card=$('#lens-template').content.firstElementChild.cloneNode(true);card.dataset.id=lens.id;card.querySelector('.lens-number').textContent=String(i+1).padStart(2,'0');
-    card.querySelectorAll('[data-field]').forEach(input=>{
+    const card=$('#lens-template').content.firstElementChild.cloneNode(true);card.dataset.id=lens.id;
+    const param=document.createElement('article');param.className='panel lens-param';param.dataset.id=lens.id;
+    param.append(card.querySelector('.lens-heading'),card.querySelector('.lens-inputs'));
+    param.querySelector('.lens-number').textContent=String(i+1).padStart(2,'0');
+    const heading=document.createElement('h3');heading.className='result-name';heading.textContent=lens.name;card.prepend(heading);
+    param.querySelectorAll('[data-field]').forEach(input=>{
       const field=input.dataset.field;
       input.value=field==='totalPixels'&&Number.isFinite(parsePixels(lens[field]))?formatPixels(parsePixels(lens[field])):lens[field];
       input.addEventListener(input.tagName==='SELECT'?'change':'input',()=>{
         lens[field]=field==='totalPixels'?formatPixelInput(input):input.value;
         if(field==='sensorPreset'&&input.value!=='custom'){
           [lens.sw,lens.sh]=input.value.split(':').map(Number);
-          card.querySelector('[data-field="sw"]').value=lens.sw;card.querySelector('[data-field="sh"]').value=lens.sh;
+          param.querySelector('[data-field="sw"]').value=lens.sw;param.querySelector('[data-field="sh"]').value=lens.sh;
         }
-        card.querySelector('[data-field="sw"]').disabled=card.querySelector('[data-field="sh"]').disabled=lens.sensorPreset!=='custom';
+        param.querySelector('[data-field="sw"]').disabled=param.querySelector('[data-field="sh"]').disabled=lens.sensorPreset!=='custom';
         if(field==='name'){setupDemoSelect();setupTargetSelect();}
         if(field==='focal'){setupTargetSelect();syncTarget();}
         refresh();save();
       });
     });
-    card.querySelector('[data-field="sw"]').disabled=card.querySelector('[data-field="sh"]').disabled=lens.sensorPreset!=='custom';
-    const remove=card.querySelector('.remove');remove.disabled=state.lenses.length<=2;remove.title=state.lenses.length<=2?'至少保留两个镜头用于比较':'删除这个镜头';
+    param.querySelector('[data-field="sw"]').disabled=param.querySelector('[data-field="sh"]').disabled=lens.sensorPreset!=='custom';
+    const remove=param.querySelector('.remove');remove.disabled=state.lenses.length<=2;remove.title=state.lenses.length<=2?'至少保留两个镜头用于比较':'删除这个镜头';
     remove.addEventListener('click',()=>{state.lenses=state.lenses.filter(x=>x.id!==lens.id);setupLenses();setupDemoSelect();setupTargetSelect();syncTarget();refresh();save();});
     card.querySelector('.resolution-slider').addEventListener('input',e=>{try{setTarget(targetForEdge(lens,e.target.value,state.output,state.model));}catch(error){card.querySelector('.lens-error').textContent=error.message;}});
-    parent.append(card);
+    parameters.append(param);parent.append(card);
   });
 }
 function setupDemoSelect(){
@@ -107,7 +111,7 @@ function refresh(){
   document.querySelectorAll('.reference-value').forEach((el,i)=>{const f=Number(state.refs[i].focal);el.textContent=validGlobal&&f>0&&f<=100000?fmt(target/f)+'×':'—';});
   $('#model-note').textContent=state.model==='linear'?'当前：像素 ÷ 倍数（按指定算法估算）。如果想估算实际数码裁切，切换到“倍数²”。':'当前：像素 ÷ 倍数²。同一机位下，裁切宽高分别缩小到原来的 1/倍数。';
   state.lenses.forEach(lens=>{
-    const card=lensCard(lens.id);
+    const card=lensCard(lens.id);card.querySelector('.result-name').textContent=lens.name||'未命名镜头';
     try{
       const result=CameraMath.calculate(lens,state.target,state.output,state.model);
       card.querySelector('.lens-error').textContent='';card.querySelector('.results').hidden=false;
@@ -124,6 +128,7 @@ function refresh(){
       const slider=card.querySelector('.resolution-slider');slider.value=Math.max(1,Math.min(7680,result.edge));slider.setAttribute('aria-valuetext','当前 '+fmt(result.k)+'K 长边，目标焦距 '+fmt(target)+'mm');
       card.querySelector('.resolution-scale').setAttribute('aria-label','当前长边 '+result.edge+' 像素，'+fmt(result.k)+'K，建议 '+result.recommendation);
       set('.lens-note',result.zoom<1?'该镜头无法通过裁切获得更广视野，像素按原始值保留。':result.edge<1?'当前预算不足 1 像素，无法形成有效画面。':'原生像素长边上限 '+fmt(CameraMath.calculate(lens,lens.focal,state.output,state.model).edge,0)+'；超过上限会停在原生焦距，不能补出细节。建议档位向上取一档，不代表实拍一定清晰。');
+      card.querySelector('.resolution-slider').title=card.querySelector('.lens-note').textContent;
     }catch(e){card.querySelector('.lens-error').textContent=e.message;card.querySelector('.results').hidden=true;}
   });refreshDemo();
 }
@@ -194,3 +199,11 @@ $('#crop-frame').addEventListener('keydown',e=>{
   const b=scene.getBoundingClientRect(),f=$('#crop-frame').getBoundingClientRect(),[dx,dy]=moves[e.key];
   setCropPoint((f.left+f.width/2-b.left)/b.width+dx,(f.top+f.height/2-b.top)/b.height+dy);save();
 });
+
+function toggleSidebar(open){
+  document.body.classList.toggle('sidebar-open',open);$('#toggle-sidebar').setAttribute('aria-expanded',String(open));$('#sidebar-backdrop').hidden=!open;
+}
+$('#toggle-sidebar').addEventListener('click',()=>toggleSidebar(!document.body.classList.contains('sidebar-open')));
+$('#close-sidebar').addEventListener('click',()=>toggleSidebar(false));
+$('#sidebar-backdrop').addEventListener('click',()=>toggleSidebar(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleSidebar(false);});
