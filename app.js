@@ -147,9 +147,9 @@ function showPhoto(){
 }
 showPhoto();
 const photo=new Image();photo.onload=()=>{samplePhoto=photo.src;if(!state.photoData)showPhoto();};photo.src='https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=85';
-$('#photo-upload').addEventListener('change',async e=>{
-  const file=e.target.files[0];if(!file)return;
-  if(!/^image\/(jpeg|png|webp|avif|gif)$/.test(file.type)||file.size>20000000){$('#photo-status').textContent='请选择不超过 20MB 的 JPG、PNG、WebP、AVIF 或 GIF 图片。';e.target.value='';return;}
+async function loadPhoto(file){
+  if(!file)return;
+  if(!/^image\/(jpeg|png|webp|avif|gif)$/.test(file.type)||file.size>20000000){$('#photo-status').textContent='请选择不超过 20MB 的 JPG、PNG、WebP、AVIF 或 GIF 图片。';return;}
   $('#photo-status').textContent='正在处理照片…';
   try{
     const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
@@ -161,7 +161,14 @@ $('#photo-upload').addEventListener('change',async e=>{
     state.photoData=canvas.toDataURL('image/jpeg',.85);state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();
     if(!storageAvailable)$('#photo-status').textContent='照片当前可用，但浏览器空间不足，无法保存到下次。';
   }catch(error){$('#photo-status').textContent='无法读取这张照片，请换一张常见格式图片。';}
-  e.target.value='';
+}
+$('#photo-upload').addEventListener('change',async e=>{await loadPhoto(e.target.files[0]);e.target.value='';});
+document.addEventListener('paste',e=>{
+  const items=Array.from(e.clipboardData?.items||[]);
+  const item=items.find(item=>item.kind==='file'&&item.type.startsWith('image/'));
+  const file=item?.getAsFile()||Array.from(e.clipboardData?.files||[]).find(file=>file.type.startsWith('image/'));
+  if(!file)return;
+  e.preventDefault();loadPhoto(file);
 });
 $('#reset-photo').addEventListener('click',()=>{state.photoData=null;state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();});
 const scene=$('.base-scene');let drag=null;
