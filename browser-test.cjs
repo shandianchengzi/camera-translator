@@ -72,6 +72,11 @@ const {calculate,targetForEdge}=require('./calculator.js');
     const originalPhoto=await page.locator('#zoom-image').getAttribute('src');
     await page.click('#change-photo');
     assert.ok(await page.locator('#photo-dialog').evaluate(el=>el.open));
+    assert.ok(await page.locator('#photo-dialog').isVisible());
+    await page.click('#close-photo-dialog');
+    assert.ok(!(await page.locator('#photo-dialog').evaluate(el=>el.open)));
+    await page.click('#change-photo');
+    assert.ok(await page.locator('#photo-dialog').isVisible());
     assert.equal(await page.evaluate(()=>document.activeElement.id),'photo-paste-area');
     await page.evaluate(()=>{
       const c=document.createElement('canvas');c.width=320;c.height=180;const ctx=c.getContext('2d');ctx.fillStyle='#f09434';ctx.fillRect(0,0,320,180);

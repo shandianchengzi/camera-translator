@@ -35,6 +35,16 @@ jobs:
           mkdir _site
           cp index.html style.css calculator.js app.js scene.svg _site/
           touch _site/.nojekyll
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          page = Path('_site/index.html')
+          html = page.read_text()
+          for asset in ('style.css', 'calculator.js', 'app.js'):
+              pattern = r'(src|href)="' + re.escape(asset) + r'(?:\?[^"]*)?"'
+              html = re.sub(pattern, lambda m: m.group(1) + '="' + asset + '?v=' + os.environ['GITHUB_SHA'] + '"', html)
+          page.write_text(html)
+          PY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
