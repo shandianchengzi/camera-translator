@@ -56,3 +56,10 @@ assert.equal(targetForEdge(lens,7680,{w:16,h:9}),lens.focal);
 assert.ok(targetForEdge(lens,1,{w:16,h:9})<=100000);
 assert.throws(()=>targetForEdge(lens,0,{w:16,h:9}));
 console.log('Resolution slider inversion, sensor ratios, portrait and native-pixel bounds passed.');
+
+for(const output of [{w:16,h:9},{w:9,h:16}]) {
+  const uhd=calculate({...lens,totalPixels:3840*3840},23,output);
+  assert.equal(uhd.edge,3840);assert.equal(uhd.classification,'4K');assert.equal(uhd.recommendation,'4K');
+  assert.equal(Math.min(uhd.width,uhd.height),2160);
+}
+console.log('4K UHD landscape and portrait dimensions passed.');

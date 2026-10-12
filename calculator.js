@@ -37,7 +37,7 @@
     const edge=Math.max(width,height), tier=tiers.find(x=>edge<=x.pixels)||tiers[3];
     const lower=tiers.filter(x=>edge>=x.pixels).pop();
     const classification=edge<1024?'低于 1K':edge>7680?'高于 8K':lower?lower.name+(edge===lower.pixels?'':' 以上'):'低于 1K';
-    return {zoom,pixels,sensorW,sensorH,width,height,edge,continuousEdge:Math.max(exactWidth,exactHeight),k:edge/1024,recommendation:tier.name,classification,percent:Math.min(100,edge/7680*100)};
+    return {zoom,pixels,sensorW,sensorH,width,height,edge,continuousEdge:Math.max(exactWidth,exactHeight),recommendation:tier.name,classification,percent:Math.min(100,edge/7680*100)};
   }
   function targetForEdge(lens,edge,output) {
     const native=calculate(lens,lens.focal,output);
