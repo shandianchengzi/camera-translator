@@ -18,7 +18,7 @@ const {calculate,targetForEdge}=require('./calculator.js');
     assert.equal(await page.locator('#target-reference option').count(),2);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=window.innerHeight));
     assert.ok(await page.locator('.base-scene').isVisible());
-    assert.ok(await page.locator('.resolution-slider').first().isVisible());
+    assert.ok(await page.locator('.lens:not([hidden]) .resolution-slider').isVisible());
     assert.equal(await page.locator('[data-field="totalPixels"]').first().inputValue(),'5000,0000');
     await page.selectOption('#target-reference','lens:tele');
     await page.fill('#target-zoom','4');
@@ -86,7 +86,7 @@ const {calculate,targetForEdge}=require('./calculator.js');
     await page.click('#close-sidebar');
     assert.equal(await page.getAttribute('#toggle-sidebar','aria-expanded'),'false');
     assert.ok(await page.locator('.base-scene').isVisible());
-    assert.ok(await page.locator('.resolution-slider').first().isVisible());
+    assert.ok(await page.locator('.lens:not([hidden]) .resolution-slider').isVisible());
     for(const viewport of [{width:1280,height:720},{width:1440,height:900}]){
       await page.setViewportSize(viewport);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight));
