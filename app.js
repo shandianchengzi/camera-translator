@@ -63,13 +63,6 @@ function setupLenses(){
       const field=input.dataset.field;
       input.value=field==='totalPixels'&&Number.isFinite(parsePixels(lens[field]))?formatPixels(parsePixels(lens[field])):lens[field];
       if(field==='totalPixels'){
-        input.addEventListener('focus',()=>{
-          const raw=input.value,digits=raw.replace(/[,，\s]/g,'');
-          if(!/^\d+$/.test(digits))return;
-          const start=raw.slice(0,input.selectionStart??raw.length).replace(/[,，\s]/g,'').length;
-          const end=raw.slice(0,input.selectionEnd??raw.length).replace(/[,，\s]/g,'').length;
-          input.value=digits;input.setSelectionRange(start,end);
-        });
         input.addEventListener('blur',()=>{const value=parsePixels(input.value);if(Number.isFinite(value))input.value=formatPixels(value);});
         input.addEventListener('compositionend',()=>input.dispatchEvent(new Event('input',{bubbles:true})));
       }
