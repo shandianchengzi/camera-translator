@@ -38,6 +38,16 @@ const {calculate,targetForEdge}=require('./calculator.js');
       assert.equal(Number(await page.locator('.lens:not([hidden]) .resolution-slider').inputValue()),edge);
     }
 
+    const edgeInput=page.locator('.lens:not([hidden]) .long-edge-input');
+    await edgeInput.fill('2560');
+    assert.ok(Math.abs(Number(await page.inputValue('#target'))-targetForEdge({focal:23,totalPixels:50000000,sw:1,sh:1},2560,{w:16,h:9}))<1e-5);
+    await edgeInput.press('Tab');
+    assert.equal(Number(await edgeInput.inputValue()),2560);
+    assert.equal(Number(await page.locator('.lens:not([hidden]) .resolution-slider').inputValue()),2560);
+    await edgeInput.fill('0');
+    assert.ok((await page.locator('.lens:not([hidden]) .lens-error').textContent()).includes('整数'));
+    await edgeInput.fill('3840');await edgeInput.press('Tab');
+    assert.equal(Number(await edgeInput.inputValue()),3840);
     await page.click('#add');
     assert.equal(await page.locator('#target-reference option').count(),3);
     const third=page.locator('.lens-param').nth(2);

@@ -84,6 +84,18 @@ function setupLenses(){
     param.querySelector('[data-field="sw"]').disabled=param.querySelector('[data-field="sh"]').disabled=lens.sensorPreset!=='custom';
     const remove=param.querySelector('.remove');remove.disabled=state.lenses.length<=2;remove.title=state.lenses.length<=2?'至少保留两个镜头用于比较':'删除这个镜头';
     remove.addEventListener('click',()=>{state.lenses=state.lenses.filter(x=>x.id!==lens.id);setupLenses();setupDemoSelect();setupTargetSelect();syncTarget();refresh();save();});
+    const edgeInput=card.querySelector('.long-edge-input');
+    function applyLongEdge(){
+      const value=Number(edgeInput.value);
+      if(!edgeInput.value||!Number.isFinite(value)||value<=0||!Number.isInteger(value)){
+        card.querySelector('.lens-error').textContent='长边像素请输入大于 0 的整数。';return false;
+      }
+      try{setTarget(targetForEdge(lens,value,state.output));return true;}
+      catch(error){card.querySelector('.lens-error').textContent=error.message;return false;}
+    }
+    edgeInput.addEventListener('input',applyLongEdge);
+    edgeInput.addEventListener('blur',()=>{if(applyLongEdge())edgeInput.value=CameraMath.calculate(lens,state.target,state.output).edge;});
+    edgeInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();edgeInput.blur();}});
     card.querySelector('.resolution-slider').addEventListener('input',e=>{try{setTarget(targetForEdge(lens,e.target.value,state.output));}catch(error){card.querySelector('.lens-error').textContent=error.message;}});
     card.querySelectorAll('[data-edge]').forEach(button=>button.addEventListener('click',()=>{try{setTarget(targetForEdge(lens,button.dataset.edge,state.output));}catch(error){card.querySelector('.lens-error').textContent=error.message;}}));
     parameters.append(param);parent.append(card);
@@ -115,6 +127,7 @@ function refresh(){
       const covered=CameraMath.tiers.filter(x=>result.edge>=x.pixels).pop();
       set('.quality-summary',result.zoom<1?'目标视野比该镜头更广，不能直接用它实现。':covered?'像素长边已达到 '+covered.name+' 档位'+(result.edge>7680?'并超出 8K。':'；选择 '+result.recommendation+' 可容纳当前像素预算。'):'像素长边还没达到 1K；可选 1K 档位，但无法补回细节。');
       card.querySelector('.scale-fill').style.width=result.percent+'%';
+      const edgeInput=card.querySelector('.long-edge-input');if(document.activeElement!==edgeInput)edgeInput.value=result.edge;
       const slider=card.querySelector('.resolution-slider');slider.value=Math.max(1,Math.min(7680,result.edge));slider.setAttribute('aria-valuetext','当前 '+result.classification+'，长边 '+result.edge+' 像素，目标焦距 '+fmt(target)+'mm');
       card.querySelector('.resolution-scale').setAttribute('aria-label','当前长边 '+result.edge+' 像素，'+result.classification+'，建议 '+result.recommendation);
       set('.lens-note',result.zoom<1?'该镜头无法通过裁切获得更广视野，像素按原始值保留。':result.edge<1?'当前预算不足 1 像素，无法形成有效画面。':'原生像素长边上限 '+fmt(CameraMath.calculate(lens,lens.focal,state.output).edge,0)+'；超过上限会停在原生焦距，不能补出细节。建议档位向上取一档，不代表实拍一定清晰。');
