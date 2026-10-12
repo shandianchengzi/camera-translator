@@ -82,8 +82,9 @@ const {calculate,targetForEdge}=require('./calculator.js');
     for(const viewport of [{width:1280,height:720},{width:1440,height:900}]){
       await page.setViewportSize(viewport);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight));
-      const rects=await page.evaluate(()=>['.base-scene','.zoom-scene','.lens:first-child','.lens:nth-child(2)'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height};}));
-      for(const rect of rects){assert.ok(rect.height>50);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport');}
+      const rects=await page.evaluate(()=>['.base-scene','.zoom-scene','.lens:first-child','.lens:nth-child(2)'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {selector:s,top:r.top,bottom:r.bottom,height:r.height};}));
+      console.log('Viewport bounds',JSON.stringify({viewport,rects}));
+      for(const rect of rects){assert.ok(rect.height>50);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport: '+JSON.stringify({viewport,rect}));}
     }
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement, one-screen desktop layout and mobile parameter drawer.');
