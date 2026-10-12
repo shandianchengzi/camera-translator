@@ -39,7 +39,7 @@
     <div class="section-title"><h2 id="demo-title">拖动查看取景效果</h2><label class="demo-select">目标镜头 <select id="demo-lens"></select></label></div>
     <details class="demo-guide"><summary>手机倍数与目标镜头怎么理解？</summary><p>手机内显示的放大倍数通常是相对于主摄的。目标镜头用于检查该镜头在当前目标焦距下的清晰程度和剩余像素。调整实际拍摄倍数，建议通过左侧的“相对所选镜头的放大倍数”进行调整，并选择主摄作为基准；取景区滑块则表示相对目标镜头的裁切倍数。</p></details>
     <p class="hint demo-hint">拖动左图白框选择位置；下方滑块调整共同目标，右图同步放大。</p>
-    <div class="photo-actions"><button type="button" id="change-photo" class="upload-button">换照片</button><input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" hidden><button id="reset-photo" class="quiet">示例照片</button><span class="paste-hint">可 Ctrl+V 粘贴图片</span><span id="photo-status" role="status">照片只保存在此浏览器</span></div>
+    <div class="photo-actions"><button type="button" id="change-photo" class="upload-button">换照片</button><input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" hidden><button type="button" id="recrop-photo" class="quiet" disabled>重新裁剪</button><button id="reset-photo" class="quiet">示例照片</button><span class="paste-hint">可 Ctrl+V 粘贴图片</span><span id="photo-status" role="status">照片只保存在此浏览器</span></div>
     <div class="demo-grid"><div><div class="demo-label">原始视野 <b id="base-label"></b></div><div class="scene base-scene"><img class="scene-img" alt="用于演示取景范围的山湖风景" src="scene.svg"><div id="crop-frame" tabindex="0" role="group" aria-label="可移动取景框，方向键调整取景位置"><span id="crop-label"></span></div></div></div><div><div class="demo-label">目标视野 <b id="zoom-label"></b></div><div class="scene zoom-scene"><img id="zoom-image" class="scene-img" alt="放大后的取景范围" src="scene.svg"></div></div></div>
     <div class="view-control"><label for="view-zoom">拖动调整目标放大倍数 <b id="view-zoom-value"></b></label><input id="view-zoom" type="range" min="1" max="100" step="0.01" aria-label="相对演示镜头的放大倍数"><div class="view-ticks"><span>1× · 更广</span><span id="view-max-label">100× · 更近</span></div></div>
     <p id="demo-note" class="hint"></p>
@@ -53,6 +53,13 @@
   <label for="photo-paste-area">也可以点击下面区域，按 Ctrl+V（Mac：Command+V）</label>
   <textarea id="photo-paste-area" rows="4" placeholder="点击这里，再粘贴已复制的图片" aria-label="粘贴图片区域"></textarea>
   <p id="photo-dialog-status" role="status">图片仅在此浏览器处理和保存。</p>
+</dialog>
+<dialog id="crop-dialog" aria-labelledby="crop-dialog-title">
+  <div class="photo-dialog-heading"><h2 id="crop-dialog-title">自定义裁剪</h2><button type="button" id="cancel-crop" class="quiet">取消 ×</button></div>
+  <p class="crop-instructions">拖动白框选位置，调整滑块改变裁剪范围；框外内容不会出现在取景照片中。确认后仍保留原图，可随时重新裁剪。</p>
+  <div id="photo-crop-stage"><img id="photo-crop-source" alt="完整原图，拖动白框选择保留区域"><div id="photo-crop-box" tabindex="0" aria-label="裁剪框，可拖动或用方向键移动"></div></div>
+  <label class="crop-size-label" for="photo-crop-size">裁剪范围 <span id="photo-crop-ratio"></span></label><input id="photo-crop-size" type="range" min="10" max="100" value="100" step="1">
+  <div class="crop-actions"><button type="button" id="center-crop" class="quiet">居中</button><span id="crop-dimensions"></span><button type="button" id="confirm-crop" class="primary">确认裁剪并使用</button></div>
 </dialog>
 <template id="lens-template">
   <article class="panel lens"><div class="lens-heading"><div class="lens-number"></div><input class="lens-name" data-field="name" aria-label="镜头名称" maxlength="60"><button class="remove quiet" aria-label="删除镜头">删除</button></div>

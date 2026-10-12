@@ -1,14 +1,16 @@
 'use strict';
 const KEY='camera-translator:v1';
 const {formatPixels,parsePixels,migrateLens,targetFromPhoneZoom,targetForEdge}=CameraMath;
-const defaults=()=>({version:2,target:200,targetSource:'focal',targetRef:'lens:main',targetZoom:200/23,cropCenter:{x:.5,y:.5},photoData:null,outputPreset:'16:9',output:{w:16,h:9},lenses:[{id:'main',name:'手机主摄',focal:23,totalPixels:50000000,sensorPreset:'1:1',sw:1,sh:1},{id:'tele',name:'手机长焦',focal:70,totalPixels:50000000,sensorPreset:'1:1',sw:1,sh:1}],demoId:'main'});
+const defaults=()=>({version:2,target:200,targetSource:'focal',targetRef:'lens:main',targetZoom:200/23,cropCenter:{x:.5,y:.5},photoData:null,photoOriginal:null,photoCrop:null,outputPreset:'16:9',output:{w:16,h:9},lenses:[{id:'main',name:'手机主摄',focal:23,totalPixels:50000000,sensorPreset:'1:1',sw:1,sh:1},{id:'tele',name:'手机长焦',focal:70,totalPixels:50000000,sensorPreset:'1:1',sw:1,sh:1}],demoId:'main'});
 let state=defaults(),storageAvailable=true;
 try {
   const saved=JSON.parse(localStorage.getItem(KEY));
   if(saved&&Array.isArray(saved.lenses)&&saved.lenses.length>=2&&saved.lenses.every(x=>x&&typeof x==='object')&&saved.output) {
     state={...state,...saved,version:2};delete state.refs;delete state.model;
     if(!state.cropCenter||![state.cropCenter.x,state.cropCenter.y].every(v=>Number.isFinite(v)))state.cropCenter={x:.5,y:.5};
+    if(typeof state.photoOriginal!=='string'||!/^data:image\/(jpeg|png|webp|avif|gif);base64,/.test(state.photoOriginal))state.photoOriginal=null;
     if(typeof state.photoData!=='string'||!/^data:image\/(jpeg|png|webp|avif|gif);base64,/.test(state.photoData))state.photoData=null;
+    if(!state.photoOriginal&&state.photoData)state.photoOriginal=state.photoData;
     state.lenses=saved.lenses.slice(0,100).map((x,i)=>({...defaults().lenses[0],...migrateLens(x),id:String(x.id||i),name:String(x.name||'镜头').slice(0,60)}));
     if(saved.version!==2){state.targetSource='focal';state.targetZoom=Number(state.target)/Number(state.lenses[0].focal);}
   }
@@ -127,6 +129,8 @@ function refreshDemo(){
   $('#base-label').textContent=fmt(lens.focal)+'mm';$('#zoom-label').textContent=valid?fmt(state.target)+'mm · '+fmt(zoom)+'×':'请填写有效焦距';
   $('#crop-frame').style.width=100/scale+'%';$('#crop-frame').style.height=100/scale+'%';$('#crop-label').textContent=fmt(scale)+'×';$('#zoom-image').style.transform='scale('+scale+') translate('+((.5-center.x)*100)+'%, '+((.5-center.y)*100)+'%)';
   const maxZoom=Math.max(100,valid?zoom:1);$('#view-zoom').max=maxZoom;$('#view-zoom').value=Math.max(1,valid?zoom:1);$('#view-zoom-value').textContent=valid?fmt(zoom)+'×':'—';$('#view-max-label').textContent=fmt(maxZoom)+'× · 更近';
+  fitPhotoViews();
+  if(state.photoOriginal&&state.photoCrop&&Math.abs(state.photoCrop.ratio-Number(state.output.w)/Number(state.output.h))>1e-6)$('#photo-status').textContent='目标比例已改变，可点击“重新裁剪”调整照片。';
   $('#demo-note').textContent=valid&&zoom<1?'目标比原始视野更广，原图无法显示取景框外的内容。':'取景框宽高均为原图的 1/'+fmt(scale)+'。'+(state.photoData?'正在使用自己的照片。':'示例图片：Unsplash；加载失败时显示本地风景示意图。')+'此处展示取景范围，不模拟实际镜头画质。';
 }
 $('#target-reference').addEventListener('change',e=>{state.targetRef=e.target.value;state.targetSource='focal';syncTarget();refresh();save();});
@@ -143,6 +147,7 @@ initialize();if(!storageAvailable)$('#save-status').textContent='保存数据无
 let samplePhoto='scene.svg';
 function showPhoto(){
   document.querySelectorAll('.scene-img').forEach(img=>img.src=state.photoData||samplePhoto);
+  $('#recrop-photo').disabled=!state.photoOriginal;
   $('#photo-status').textContent=state.photoData?'已使用自己的照片 · 仅保存在此浏览器':'照片只保存在此浏览器';
 }
 showPhoto();
@@ -158,8 +163,9 @@ async function loadPhoto(file){
     const ratio=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');
     canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
     const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    state.photoData=canvas.toDataURL('image/jpeg',.85);state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();
-    if(!storageAvailable)$('#photo-status').textContent='照片当前可用，但浏览器空间不足，无法保存到下次。';
+    const original=canvas.toDataURL('image/jpeg',.85);
+    if($('#photo-dialog').open)$('#photo-dialog').close();
+    await openPhotoCrop(original);
     return true;
   }catch(error){$('#photo-status').textContent='无法读取这张照片，请换一张常见格式图片。';return false;}
 }
@@ -176,7 +182,7 @@ document.addEventListener('paste',e=>{
   if(!file){if(e.target.id==='photo-paste-area')$('#photo-dialog-status').textContent='剪贴板中没有可用图片，请先复制图片本身，再粘贴。';return;}
   e.preventDefault();applyPhoto(file);
 });
-$('#reset-photo').addEventListener('click',()=>{state.photoData=null;state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();});
+$('#reset-photo').addEventListener('click',()=>{state.photoData=null;state.photoOriginal=null;state.photoCrop=null;state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();});
 const scene=$('.base-scene');let drag=null;
 function setCropPoint(x,y){
   const lens=state.lenses.find(l=>l.id===state.demoId)||state.lenses[0],zoom=Number(state.target)/Number(lens.focal),scale=Number.isFinite(zoom)?Math.max(1,zoom):1,half=.5/scale;
@@ -223,3 +229,75 @@ $('#read-photo-clipboard').addEventListener('click',async()=>{
     $('#photo-dialog-status').textContent='剪贴板中没有图片。请复制图片本身，再点击粘贴或按 Ctrl+V。';
   }catch(error){$('#photo-dialog-status').textContent='浏览器未允许直接读取，请点击下方区域，再按 Ctrl+V 粘贴图片。';}
 });
+
+// Crop from the retained original, never from an already cropped preview.
+let photoCropDraft=null,cropDragging=null;
+async function openPhotoCrop(original=state.photoOriginal){
+  if(!original)return;
+  const image=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=original;});
+  const ratio=Number(state.output.w)/Number(state.output.h);
+  if(!Number.isFinite(ratio)||ratio<=0)throw new Error('请先填写有效的成片比例。');
+  const width=Math.min(image.naturalWidth,image.naturalHeight*ratio),height=width/ratio;
+  const previous=original===state.photoOriginal?state.photoCrop:null;
+  const size=previous&&previous.ratio===ratio?Math.max(.1,Math.min(1,previous.width/width)):1;
+  const cx=previous?(previous.x+previous.width/2):image.naturalWidth/2,cy=previous?(previous.y+previous.height/2):image.naturalHeight/2;
+  photoCropDraft={original,image,ratio,maxWidth:width,maxHeight:height,width:width*size,height:height*size,x:cx-width*size/2,y:cy-height*size/2};
+  $('#photo-crop-source').src=original;$('#photo-crop-size').value=size*100;
+  $('#photo-crop-ratio').textContent=state.output.w+':'+state.output.h;
+  if(!$('#crop-dialog').open)$('#crop-dialog').showModal();
+  renderPhotoCrop();$('#photo-crop-box').focus({preventScroll:true});
+}
+function photoCropGeometry(){
+  const draft=photoCropDraft,stage=$('#photo-crop-stage').getBoundingClientRect();
+  const scale=Math.min(stage.width/draft.image.naturalWidth,stage.height/draft.image.naturalHeight);
+  return {stage,scale,ox:(stage.width-draft.image.naturalWidth*scale)/2,oy:(stage.height-draft.image.naturalHeight*scale)/2};
+}
+function renderPhotoCrop(){
+  if(!photoCropDraft||!$('#crop-dialog').open)return;
+  const d=photoCropDraft;d.x=Math.max(0,Math.min(d.image.naturalWidth-d.width,d.x));d.y=Math.max(0,Math.min(d.image.naturalHeight-d.height,d.y));
+  const g=photoCropGeometry(),box=$('#photo-crop-box');
+  Object.assign(box.style,{left:(g.ox+d.x*g.scale)+'px',top:(g.oy+d.y*g.scale)+'px',width:(d.width*g.scale)+'px',height:(d.height*g.scale)+'px'});
+  $('#crop-dimensions').textContent=Math.round(d.width)+' × '+Math.round(d.height);
+}
+$('#recrop-photo').addEventListener('click',()=>openPhotoCrop().catch(()=>$('#photo-status').textContent='原图读取失败，请重新上传。'));
+$('#cancel-crop').addEventListener('click',()=>{$('#crop-dialog').close();showPhoto();});
+$('#center-crop').addEventListener('click',()=>{if(!photoCropDraft)return;const d=photoCropDraft;d.x=(d.image.naturalWidth-d.width)/2;d.y=(d.image.naturalHeight-d.height)/2;renderPhotoCrop();});
+$('#photo-crop-size').addEventListener('input',e=>{
+  if(!photoCropDraft)return;const d=photoCropDraft,cx=d.x+d.width/2,cy=d.y+d.height/2;
+  d.width=d.maxWidth*Number(e.target.value)/100;d.height=d.maxHeight*Number(e.target.value)/100;d.x=cx-d.width/2;d.y=cy-d.height/2;renderPhotoCrop();
+});
+$('#confirm-crop').addEventListener('click',()=>{
+  if(!photoCropDraft)return;const d=photoCropDraft,canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(d.width));canvas.height=Math.max(1,Math.round(d.height));
+  canvas.getContext('2d').drawImage(d.image,d.x,d.y,d.width,d.height,0,0,canvas.width,canvas.height);
+  state.photoOriginal=d.original;state.photoData=canvas.toDataURL('image/jpeg',.85);
+  state.photoCrop={x:d.x,y:d.y,width:d.width,height:d.height,ratio:d.ratio};state.cropCenter={x:.5,y:.5};
+  $('#crop-dialog').close();showPhoto();refreshDemo();save();
+  if(!storageAvailable)$('#photo-status').textContent='照片当前可用，但浏览器空间不足，无法保存到下次。';
+});
+const photoCropStage=$('#photo-crop-stage');
+photoCropStage.addEventListener('pointerdown',e=>{
+  if(!photoCropDraft||e.button!==0)return;e.preventDefault();photoCropStage.setPointerCapture(e.pointerId);
+  const g=photoCropGeometry(),d=photoCropDraft,x=(e.clientX-g.stage.left-g.ox)/g.scale,y=(e.clientY-g.stage.top-g.oy)/g.scale;
+  const inside=x>=d.x&&x<=d.x+d.width&&y>=d.y&&y<=d.y+d.height;
+  cropDragging={id:e.pointerId,dx:inside?x-d.x:d.width/2,dy:inside?y-d.y:d.height/2};d.x=x-cropDragging.dx;d.y=y-cropDragging.dy;renderPhotoCrop();
+});
+photoCropStage.addEventListener('pointermove',e=>{
+  if(!cropDragging||e.pointerId!==cropDragging.id)return;const g=photoCropGeometry();photoCropDraft.x=(e.clientX-g.stage.left-g.ox)/g.scale-cropDragging.dx;photoCropDraft.y=(e.clientY-g.stage.top-g.oy)/g.scale-cropDragging.dy;renderPhotoCrop();
+});
+for(const event of ['pointerup','pointercancel'])photoCropStage.addEventListener(event,()=>cropDragging=null);
+$('#photo-crop-box').addEventListener('keydown',e=>{
+  const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!photoCropDraft||!moves[e.key])return;e.preventDefault();const d=photoCropDraft,[x,y]=moves[e.key];d.x+=x*d.image.naturalWidth*.01;d.y+=y*d.image.naturalHeight*.01;renderPhotoCrop();
+});
+function fitPhotoViews(){
+  const ratio=state.photoCrop?.ratio||Number(state.output.w)/Number(state.output.h)||16/9;
+  document.querySelectorAll('.demo-grid>div').forEach(figure=>{
+    const scene=figure.querySelector('.scene'),label=figure.querySelector('.demo-label');if(!scene)return;
+    const maxW=figure.clientWidth,maxH=Math.max(1,figure.clientHeight-label.getBoundingClientRect().height-5),w=Math.min(maxW,maxH*ratio);
+    scene.style.width=w+'px';scene.style.height=(w/ratio)+'px';
+  });
+}
+const photoLayoutObserver=new ResizeObserver(()=>{fitPhotoViews();renderPhotoCrop();});
+photoLayoutObserver.observe($('.demo-grid'));photoLayoutObserver.observe($('#photo-crop-stage'));
+
+$('#crop-dialog').addEventListener('cancel',()=>showPhoto());
