@@ -27,7 +27,6 @@ function setupTargetSelect(){
   state.lenses.forEach(l=>{const option=document.createElement('option');option.value='lens:'+l.id;option.textContent=(l.name||'未命名镜头')+' · '+fmt(l.focal)+'mm';select.append(option);});
   if(!Array.from(select.options).some(o=>o.value===state.targetRef)){state.targetRef='lens:'+state.lenses[0].id;state.targetSource='focal';}
   select.value=state.targetRef;
-  const view=$('#view-reference');view.replaceChildren(...Array.from(select.options).map(option=>option.cloneNode(true)));view.value=state.targetRef;
 }
 function syncTarget(){
   const base=referenceFocal();
@@ -122,20 +121,18 @@ function refresh(){
   });refreshDemo();
 }
 function refreshDemo(){
-  const base=referenceFocal(),zoom=Number(state.target)/base,valid=Number.isFinite(zoom)&&zoom>0,scale=valid?Math.max(1,zoom):1;
+  const lens=state.lenses.find(x=>x.id===state.demoId)||state.lenses[0],zoom=Number(state.target)/Number(lens.focal),valid=Number.isFinite(zoom)&&zoom>0,scale=valid?Math.max(1,zoom):1;
   const half=.5/scale,center={x:Math.max(half,Math.min(1-half,state.cropCenter.x)),y:Math.max(half,Math.min(1-half,state.cropCenter.y))};
   $('#crop-frame').style.left=(center.x*100)+'%';$('#crop-frame').style.top=(center.y*100)+'%';
-  $('#base-label').textContent=fmt(base)+'mm';$('#zoom-label').textContent=valid?fmt(state.target)+'mm · '+fmt(zoom)+'×':'请填写有效焦距';
+  $('#base-label').textContent=fmt(lens.focal)+'mm';$('#zoom-label').textContent=valid?fmt(state.target)+'mm · '+fmt(zoom)+'×':'请填写有效焦距';
   $('#crop-frame').style.width=100/scale+'%';$('#crop-frame').style.height=100/scale+'%';$('#crop-label').textContent=fmt(scale)+'×';$('#zoom-image').style.transform='scale('+scale+') translate('+((.5-center.x)*100)+'%, '+((.5-center.y)*100)+'%)';
   const maxZoom=Math.max(100,valid?zoom:1);$('#view-zoom').max=maxZoom;$('#view-zoom').value=Math.max(1,valid?zoom:1);$('#view-zoom-value').textContent=valid?fmt(zoom)+'×':'—';$('#view-max-label').textContent=fmt(maxZoom)+'× · 更近';
   $('#demo-note').textContent=valid&&zoom<1?'目标比原始视野更广，原图无法显示取景框外的内容。':'取景框宽高均为原图的 1/'+fmt(scale)+'。'+(state.photoData?'正在使用自己的照片。':'示例图片：Unsplash；加载失败时显示本地风景示意图。')+'此处展示取景范围，不模拟实际镜头画质。';
 }
-function changeReference(value){state.targetRef=value;state.targetSource='focal';setupTargetSelect();syncTarget();refresh();save();}
-$('#target-reference').addEventListener('change',e=>changeReference(e.target.value));
-$('#view-reference').addEventListener('change',e=>changeReference(e.target.value));
+$('#target-reference').addEventListener('change',e=>{state.targetRef=e.target.value;state.targetSource='focal';syncTarget();refresh();save();});
 $('#target-zoom').addEventListener('input',e=>{state.targetSource='zoom';state.targetZoom=e.target.value;syncTarget();refresh();save();});
 $('#target').addEventListener('input',e=>{state.targetSource='focal';state.target=e.target.value;syncTarget();refresh();save();});
-$('#view-zoom').addEventListener('input',e=>setTarget(Math.min(100000,referenceFocal()*Number(e.target.value))));
+$('#view-zoom').addEventListener('input',e=>{const lens=state.lenses.find(x=>x.id===state.demoId)||state.lenses[0];setTarget(Math.min(100000,Number(lens.focal)*Number(e.target.value)));});
 $('#output-preset').addEventListener('change',e=>{state.outputPreset=e.target.value;if(e.target.value!=='custom'){const [w,h]=e.target.value.split(':').map(Number);state.output={w,h};}setupSettings();refresh();save();});
 ['w','h'].forEach(axis=>$('#output-'+axis).addEventListener('input',e=>{state.output[axis]=e.target.value;refresh();save();}));
 $('#add').addEventListener('click',()=>{state.lenses.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name:'自定义镜头 '+(state.lenses.length+1),expanded:true,focal:20,totalPixels:50000000,sensorPreset:'1:1',sw:1,sh:1});setupLenses();setupDemoSelect();setupTargetSelect();syncTarget();refresh();save();});
@@ -169,7 +166,7 @@ $('#photo-upload').addEventListener('change',async e=>{
 $('#reset-photo').addEventListener('click',()=>{state.photoData=null;state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();});
 const scene=$('.base-scene');let drag=null;
 function setCropPoint(x,y){
-  const zoom=Number(state.target)/referenceFocal(),scale=Number.isFinite(zoom)?Math.max(1,zoom):1,half=.5/scale;
+  const lens=state.lenses.find(l=>l.id===state.demoId)||state.lenses[0],zoom=Number(state.target)/Number(lens.focal),scale=Number.isFinite(zoom)?Math.max(1,zoom):1,half=.5/scale;
   state.cropCenter={x:Math.max(half,Math.min(1-half,x)),y:Math.max(half,Math.min(1-half,y))};refreshDemo();
 }
 scene.addEventListener('pointerdown',e=>{
