@@ -83,6 +83,7 @@ function setupLenses(){
     const remove=param.querySelector('.remove');remove.disabled=state.lenses.length<=2;remove.title=state.lenses.length<=2?'至少保留两个镜头用于比较':'删除这个镜头';
     remove.addEventListener('click',()=>{state.lenses=state.lenses.filter(x=>x.id!==lens.id);setupLenses();setupDemoSelect();setupTargetSelect();syncTarget();refresh();save();});
     card.querySelector('.resolution-slider').addEventListener('input',e=>{try{setTarget(targetForEdge(lens,e.target.value,state.output));}catch(error){card.querySelector('.lens-error').textContent=error.message;}});
+    card.querySelectorAll('[data-edge]').forEach(button=>button.addEventListener('click',()=>{try{setTarget(targetForEdge(lens,button.dataset.edge,state.output));}catch(error){card.querySelector('.lens-error').textContent=error.message;}}));
     parameters.append(param);parent.append(card);
   });
 }

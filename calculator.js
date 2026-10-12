@@ -32,8 +32,8 @@
     const long=Math.max(sensorW,sensorH), short=Math.min(sensorW,sensorH);
     const availableW=ow>=oh?long:short, availableH=ow>=oh?short:long;
     const exactWidth=Math.min(availableW,availableH*ow/oh),exactHeight=Math.min(availableH,availableW*oh/ow);
-    const width=Math.max(0,Math.floor(exactWidth));
-    const height=Math.max(0,Math.floor(exactHeight));
+    const width=Math.max(0,Math.floor(exactWidth+1e-7));
+    const height=Math.max(0,Math.floor(exactHeight+1e-7));
     const edge=Math.max(width,height), tier=tiers.find(x=>edge<=x.pixels)||tiers[3];
     const lower=tiers.filter(x=>edge>=x.pixels).pop();
     const classification=edge<1024?'低于 1K':edge>7680?'高于 8K':lower?lower.name+(edge===lower.pixels?'':' 以上'):'低于 1K';

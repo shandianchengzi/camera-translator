@@ -31,6 +31,13 @@ const {calculate,targetForEdge}=require('./calculator.js');
     await move('.lens:first-child .resolution-slider',2048);
     const expected=targetForEdge({focal:23,totalPixels:50000000,sw:1,sh:1},2048,{w:16,h:9});
     assert.ok(Math.abs(Number(await page.inputValue('#target'))-expected)<1e-5);
+    for(const edge of [1024,2048,3840]) {
+      await page.click('.lens:not([hidden]) [data-edge="'+edge+'"]');
+      const focal=targetForEdge({focal:23,totalPixels:50000000,sw:1,sh:1},edge,{w:16,h:9});
+      assert.ok(Math.abs(Number(await page.inputValue('#target'))-focal)<1e-5);
+      assert.equal(Number(await page.locator('.lens:not([hidden]) .resolution-slider').inputValue()),edge);
+    }
+
     await page.click('#add');
     assert.equal(await page.locator('#target-reference option').count(),3);
     const third=page.locator('.lens-param').nth(2);
