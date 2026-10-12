@@ -16,7 +16,7 @@ assert.equal(r.width,4000);assert.equal(r.height,2250);
 r=calculate({...lens,totalPixels:12000000,sw:4,sh:3},23,{w:1,h:1});
 assert.equal(r.width,r.height);assert.ok(r.width<=3000);
 r=calculate(lens,46,{w:16,h:9},'area');assert.equal(r.pixels,12500000);
-r=calculate(lens,10,{w:16,h:9});assert.equal(r.pixels,50000000);assert.ok(r.zoom<1);
+r=calculate(lens,10,{w:16,h:9});assert.ok(r.pixels>50000000);assert.ok(r.zoom<1);
 r=calculate({...lens,totalPixels:100000},200,{w:16,h:9});assert.equal(r.recommendation,'1K');
 for(const invalid of [0,-1,NaN,Infinity,''])assert.throws(()=>calculate({...lens,focal:invalid},200,{w:16,h:9}));
 assert.throws(()=>calculate(lens,200,{w:0,h:9}));
@@ -52,7 +52,8 @@ for(const model of ['area']) {
     }
   }
 }
-assert.equal(targetForEdge(lens,7680,{w:16,h:9}),lens.focal);
+assert.ok(targetForEdge(lens,7680,{w:16,h:9})<lens.focal);
+const beyond=calculate(lens,targetForEdge(lens,20000,{w:16,h:9}),{w:16,h:9});assert.equal(beyond.edge,20000);
 assert.ok(targetForEdge(lens,1,{w:16,h:9})<=100000);
 assert.throws(()=>targetForEdge(lens,0,{w:16,h:9}));
 console.log('Resolution slider inversion, sensor ratios, portrait and native-pixel bounds passed.');

@@ -117,7 +117,7 @@ function refresh(){
       const result=CameraMath.calculate(lens,state.target,state.output);
       card.querySelector('.lens-error').textContent='';card.querySelector('.results').hidden=false;
       const set=(selector,value)=>card.querySelector(selector).textContent=value;
-      set('.compact-report',(lens.name||'镜头')+'：'+fmt(lens.focal)+'mm → '+fmt(target)+'mm（'+fmt(result.zoom)+'×）；剩余 '+formatPixels(result.pixels)+' 像素，成片 '+fmt(result.width,0)+' × '+fmt(result.height,0)+'（'+formatPixels(result.width*result.height)+' 像素），长边 '+fmt(result.edge,0)+' 像素（'+result.classification+'），建议 '+result.recommendation+'。');
+      set('.compact-report',(lens.name||'镜头')+'：'+fmt(lens.focal)+'mm → '+fmt(target)+'mm（'+fmt(result.zoom)+'×）；剩余 '+formatPixels(result.pixels)+' 像素（推算），成片 '+fmt(result.width,0)+' × '+fmt(result.height,0)+'（'+formatPixels(result.width*result.height)+' 像素），长边 '+fmt(result.edge,0)+' 像素（'+result.classification+'），建议 '+result.recommendation+'。');
       set('.zoom-value',fmt(result.zoom)+'×');set('.focal-path',fmt(lens.focal)+'mm → '+fmt(target)+'mm');
       set('.pixel-value',formatPixels(result.pixels));
       set('.sensor-dimensions','像素 · 未按成片比例裁切，传感器预算 '+fmt(Math.floor(result.sensorW),0)+' × '+fmt(Math.floor(result.sensorH),0));
@@ -128,9 +128,13 @@ function refresh(){
       set('.quality-summary',result.zoom<1?'目标视野比该镜头更广，不能直接用它实现。':covered?'像素长边已达到 '+covered.name+' 档位'+(result.edge>7680?'并超出 8K。':'；选择 '+result.recommendation+' 可容纳当前像素预算。'):'像素长边还没达到 1K；可选 1K 档位，但无法补回细节。');
       card.querySelector('.scale-fill').style.width=result.percent+'%';
       const edgeInput=card.querySelector('.long-edge-input');if(document.activeElement!==edgeInput)edgeInput.value=result.edge;
-      const slider=card.querySelector('.resolution-slider');slider.value=Math.max(1,Math.min(7680,result.edge));slider.setAttribute('aria-valuetext','当前 '+result.classification+'，长边 '+result.edge+' 像素，目标焦距 '+fmt(target)+'mm');
+      const native=CameraMath.calculate(lens,lens.focal,state.output);
+      const warning=card.querySelector('.native-limit-warning');warning.hidden=result.edge<=native.edge;warning.textContent='已超过镜头原生上限：当前比例下长边最多 '+native.edge+' 像素。当前数值允许推算，但不会增加真实细节。';
+      const slider=card.querySelector('.resolution-slider');slider.max=Math.max(7680,result.edge);slider.value=Math.max(1,result.edge);
+      card.querySelector('.scale-fill').style.width=Math.min(100,result.edge/Number(slider.max)*100)+'%';
+      card.querySelectorAll('[data-edge]').forEach(button=>{button.style.left=(Number(button.dataset.edge)/Number(slider.max)*100)+'%';button.style.transform=Number(button.dataset.edge)===Number(slider.max)?'translateX(-100%)':'translateX(-50%)';});slider.setAttribute('aria-valuetext','当前 '+result.classification+'，长边 '+result.edge+' 像素，目标焦距 '+fmt(target)+'mm');
       card.querySelector('.resolution-scale').setAttribute('aria-label','当前长边 '+result.edge+' 像素，'+result.classification+'，建议 '+result.recommendation);
-      set('.lens-note',result.zoom<1?'该镜头无法通过裁切获得更广视野，像素按原始值保留。':result.edge<1?'当前预算不足 1 像素，无法形成有效画面。':'原生像素长边上限 '+fmt(CameraMath.calculate(lens,lens.focal,state.output).edge,0)+'；超过上限会停在原生焦距，不能补出细节。建议档位向上取一档，不代表实拍一定清晰。');
+      set('.lens-note',result.zoom<1?'当前目标超出镜头原生能力，已按公式继续推算；原生长边上限 '+native.edge+' 像素。':result.edge<1?'当前预算不足 1 像素，无法形成有效画面。':'原生像素长边上限 '+fmt(CameraMath.calculate(lens,lens.focal,state.output).edge,0)+'；允许超过上限，但不会补出真实细节。建议档位向上取一档，不代表实拍一定清晰。');
       card.querySelector('.resolution-slider').title=card.querySelector('.lens-note').textContent;
     }catch(e){card.querySelector('.lens-error').textContent=e.message;card.querySelector('.results').hidden=true;}
   });refreshDemo();

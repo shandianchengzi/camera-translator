@@ -26,7 +26,7 @@
     if (!values.every(v => Number.isFinite(v) && v > 0)) throw new Error('请填写大于 0 的有效数字。');
     const [focal,totalPixels,sw,sh,t,ow,oh] = values;
     if (focal>100000 || t>100000 || totalPixels>10000000000 || [sw,sh,ow,oh].some(v=>v>100)) throw new Error('数值超出支持范围：焦距 ≤ 100000mm，总像素 ≤ 100,0000,0000，比例单边 ≤ 100。');
-    const zoom=t/focal, crop=Math.max(1,zoom);
+    const zoom=t/focal, crop=zoom;
     const pixels=totalPixels/Math.pow(crop,2);
     const sensorW=Math.sqrt(pixels*sw/sh), sensorH=Math.sqrt(pixels*sh/sw);
     const long=Math.max(sensorW,sensorH), short=Math.min(sensorW,sensorH);
@@ -43,9 +43,9 @@
     const native=calculate(lens,lens.focal,output);
     const requested=Number(edge);
     if(!Number.isFinite(requested)||requested<=0)throw new Error('请指定大于 0 的分辨率。');
-    const achievable=Math.min(requested,native.continuousEdge);
+    const achievable=requested;
     const target=Number(lens.focal)*(native.continuousEdge/achievable);
-    return Math.min(100000,Math.max(.01,target));
+    return Math.min(100000,target);
   }
   root.CameraMath={calculate,tiers,parsePixels,formatPixels,migrateLens,targetFromPhoneZoom,targetForEdge};
   if(typeof module!=='undefined') module.exports=root.CameraMath;
