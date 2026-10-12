@@ -70,14 +70,18 @@ const {calculate,targetForEdge}=require('./calculator.js');
     await page.setInputFiles('#photo-upload',{name:'test-photo.png',mimeType:'image/png',buffer:Buffer.from(photoBase64,'base64')});
     await page.waitForFunction(()=>document.querySelector('#zoom-image').src.startsWith('data:image/jpeg;base64,'));
     const originalPhoto=await page.locator('#zoom-image').getAttribute('src');
+    await page.click('#change-photo');
+    assert.ok(await page.locator('#photo-dialog').evaluate(el=>el.open));
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'photo-paste-area');
     await page.evaluate(()=>{
       const c=document.createElement('canvas');c.width=320;c.height=180;const ctx=c.getContext('2d');ctx.fillStyle='#f09434';ctx.fillRect(0,0,320,180);
       const bytes=Uint8Array.from(atob(c.toDataURL('image/png').split(',')[1]),ch=>ch.charCodeAt(0));
       const data=new DataTransfer();data.items.add(new File([bytes],'clipboard.png',{type:'image/png'}));
-      document.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+      document.querySelector('#photo-paste-area').dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
     });
     await page.waitForFunction(old=>document.querySelector('#zoom-image').src!==old,originalPhoto);
-    assert.ok(await page.evaluate(()=>{const data=new DataTransfer();data.setData('text/plain','test');return document.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));}));
+    await page.waitForFunction(()=>!document.querySelector('#photo-dialog').open);
+    assert.ok(await page.evaluate(()=>{const data=new DataTransfer();data.setData('text/plain','test');return document.querySelector('#photo-paste-area').dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));}));
 
     const bounds=await page.locator('.base-scene').boundingBox();
     await page.locator('.base-scene').scrollIntoViewIfNeeded();

@@ -149,7 +149,7 @@ showPhoto();
 const photo=new Image();photo.onload=()=>{samplePhoto=photo.src;if(!state.photoData)showPhoto();};photo.src='https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=85';
 async function loadPhoto(file){
   if(!file)return;
-  if(!/^image\/(jpeg|png|webp|avif|gif)$/.test(file.type)||file.size>20000000){$('#photo-status').textContent='请选择不超过 20MB 的 JPG、PNG、WebP、AVIF 或 GIF 图片。';return;}
+  if(!/^image\/(jpeg|png|webp|avif|gif)$/.test(file.type)||file.size>20000000){$('#photo-status').textContent='请选择不超过 20MB 的 JPG、PNG、WebP、AVIF 或 GIF 图片。';return false;}
   $('#photo-status').textContent='正在处理照片…';
   try{
     const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
@@ -160,15 +160,21 @@ async function loadPhoto(file){
     const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
     state.photoData=canvas.toDataURL('image/jpeg',.85);state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();
     if(!storageAvailable)$('#photo-status').textContent='照片当前可用，但浏览器空间不足，无法保存到下次。';
-  }catch(error){$('#photo-status').textContent='无法读取这张照片，请换一张常见格式图片。';}
+    return true;
+  }catch(error){$('#photo-status').textContent='无法读取这张照片，请换一张常见格式图片。';return false;}
 }
-$('#photo-upload').addEventListener('change',async e=>{await loadPhoto(e.target.files[0]);e.target.value='';});
+async function applyPhoto(file){
+  const ok=await loadPhoto(file);
+  if(ok&&$('#photo-dialog').open)$('#photo-dialog').close();
+  else if(!ok)$('#photo-dialog-status').textContent=$('#photo-status').textContent;
+}
+$('#photo-upload').addEventListener('change',async e=>{await applyPhoto(e.target.files[0]);e.target.value='';});
 document.addEventListener('paste',e=>{
   const items=Array.from(e.clipboardData?.items||[]);
   const item=items.find(item=>item.kind==='file'&&item.type.startsWith('image/'));
   const file=item?.getAsFile()||Array.from(e.clipboardData?.files||[]).find(file=>file.type.startsWith('image/'));
-  if(!file)return;
-  e.preventDefault();loadPhoto(file);
+  if(!file){if(e.target.id==='photo-paste-area')$('#photo-dialog-status').textContent='剪贴板中没有可用图片，请先复制图片本身，再粘贴。';return;}
+  e.preventDefault();applyPhoto(file);
 });
 $('#reset-photo').addEventListener('click',()=>{state.photoData=null;state.cropCenter={x:.5,y:.5};showPhoto();refreshDemo();save();});
 const scene=$('.base-scene');let drag=null;
@@ -201,3 +207,19 @@ $('#toggle-sidebar').addEventListener('click',()=>toggleSidebar(!document.body.c
 $('#close-sidebar').addEventListener('click',()=>toggleSidebar(false));
 $('#sidebar-backdrop').addEventListener('click',()=>toggleSidebar(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleSidebar(false);});
+
+$('#change-photo').addEventListener('click',()=>{
+  $('#photo-dialog-status').textContent='可上传图片，或在粘贴区域按 Ctrl+V；图片不上传服务器。';
+  $('#photo-paste-area').value='';$('#photo-dialog').showModal();$('#photo-paste-area').focus();
+});
+$('#close-photo-dialog').addEventListener('click',()=>$('#photo-dialog').close());
+$('#choose-photo-file').addEventListener('click',()=>$('#photo-upload').click());
+$('#read-photo-clipboard').addEventListener('click',async()=>{
+  $('#photo-paste-area').focus();
+  if(!navigator.clipboard?.read){$('#photo-dialog-status').textContent='此浏览器不支持按钮读取，请在下方区域按 Ctrl+V 粘贴图片。';return;}
+  try{
+    const items=await navigator.clipboard.read();
+    for(const item of items){const type=item.types.find(type=>type.startsWith('image/'));if(type){const blob=await item.getType(type);await applyPhoto(new File([blob],'clipboard-image',{type}));return;}}
+    $('#photo-dialog-status').textContent='剪贴板中没有图片。请复制图片本身，再点击粘贴或按 Ctrl+V。';
+  }catch(error){$('#photo-dialog-status').textContent='浏览器未允许直接读取，请点击下方区域，再按 Ctrl+V 粘贴图片。';}
+});
