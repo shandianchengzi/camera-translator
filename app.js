@@ -132,7 +132,21 @@ function refresh(){
       const warning=card.querySelector('.native-limit-warning');warning.hidden=result.edge<=native.edge;warning.textContent='已超过镜头原生上限：当前比例下长边最多 '+native.edge+' 像素。当前数值允许推算，但不会增加真实细节。';
       const slider=card.querySelector('.resolution-slider');slider.max=Math.max(7680,result.edge);slider.value=Math.max(1,result.edge);
       card.querySelector('.scale-fill').style.width=Math.min(100,result.edge/Number(slider.max)*100)+'%';
-      card.querySelectorAll('[data-edge]').forEach(button=>{button.style.left=(Number(button.dataset.edge)/Number(slider.max)*100)+'%';button.style.transform=Number(button.dataset.edge)===Number(slider.max)?'translateX(-100%)':'translateX(-50%)';});slider.setAttribute('aria-valuetext','当前 '+result.classification+'，长边 '+result.edge+' 像素，目标焦距 '+fmt(target)+'mm');
+      card.querySelectorAll('[data-edge]').forEach(button=>{
+        const edge=Number(button.dataset.edge),tier=CameraMath.tiers.find(t=>t.pixels===edge);
+        const focal=targetForEdge(lens,edge,state.output),relativeZoom=focal/base;
+        const beyond=edge>native.edge;
+        button.replaceChildren();
+        const label=document.createElement('span');label.textContent=tier.name;
+        const zoom=document.createElement('span');zoom.className='tier-relative-zoom';zoom.textContent=Number.isFinite(relativeZoom)&&base>0?fmt(relativeZoom)+'×'+(beyond?'*':''):'—';
+        button.append(label,zoom);
+        button.title=tier.name+'：长边 '+edge+' 像素，目标焦距 '+fmt(focal)+'mm，相对所选基准镜头 '+fmt(relativeZoom)+' 倍'+(beyond?'；超过此镜头原生长边上限 '+native.edge+' 像素，仅为推算':'；这是该镜头保持此档像素时的最大相对倍数');
+        button.setAttribute('aria-label',button.title);
+        button.style.left=(edge/Number(slider.max)*100)+'%';button.style.transform=edge===Number(slider.max)?'translateX(-100%)':'translateX(-50%)';
+      });
+      const reference=state.lenses.find(l=>'lens:'+l.id===state.targetRef);
+      card.querySelector('.resolution-class').textContent=result.classification+' · 刻度倍数相对 '+(reference?.name||'所选镜头')+'（'+fmt(base)+'mm）';
+      slider.setAttribute('aria-valuetext','当前 '+result.classification+'，长边 '+result.edge+' 像素，目标焦距 '+fmt(target)+'mm');
       card.querySelector('.resolution-scale').setAttribute('aria-label','当前长边 '+result.edge+' 像素，'+result.classification+'，建议 '+result.recommendation);
       set('.lens-note',result.zoom<1?'当前目标超出镜头原生能力，已按公式继续推算；原生长边上限 '+native.edge+' 像素。':result.edge<1?'当前预算不足 1 像素，无法形成有效画面。':'原生像素长边上限 '+fmt(CameraMath.calculate(lens,lens.focal,state.output).edge,0)+'；允许超过上限，但不会补出真实细节。建议档位向上取一档，不代表实拍一定清晰。');
       card.querySelector('.resolution-slider').title=card.querySelector('.lens-note').textContent;

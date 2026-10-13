@@ -47,3 +47,5 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 .view-workspace{grid-template-rows:minmax(220px,1fr) 180px}
 @media(max-height:760px) and (min-width:761px){.view-workspace{grid-template-rows:minmax(180px,1fr) 190px}}
 @media(max-width:760px){.view-workspace{grid-template-rows:minmax(220px,1fr) 215px}}
+.comparison .tick{display:flex;align-items:center;gap:5px;white-space:nowrap}.tier-relative-zoom{font-size:10px;font-weight:400;color:var(--muted)}.comparison .resolution-scale{margin-bottom:34px}
+@media(max-width:760px){.comparison .tick{flex-direction:column;gap:1px;padding:2px 3px;line-height:1.2}.tier-relative-zoom{font-size:9px}.comparison .resolution-scale{margin-bottom:40px}.comparison .resolution-caption{gap:6px;flex-wrap:wrap}}
