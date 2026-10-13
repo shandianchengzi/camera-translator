@@ -1,0 +1,43 @@
+name: Capture blog screenshots
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/capture-blog.cjs
+      - .github/workflows/blog-screenshots.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: blog-screenshots
+  cancel-in-progress: true
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/camera-qa" --no-package-lock playwright@1.56.1
+          "$RUNNER_TEMP/camera-qa/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Capture current tool and verify example results
+        run: PLAYWRIGHT_PACKAGE="$RUNNER_TEMP/camera-qa/node_modules/playwright" node scripts/capture-blog.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blog-screenshots
+          path: docs/images/
+      - name: Save screenshots to documentation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/images/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Refresh tool blog screenshots'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
