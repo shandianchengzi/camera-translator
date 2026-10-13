@@ -193,12 +193,13 @@ const {calculate,targetForEdge}=require('./calculator.js');
     }
     // Repeated resizing/scrolling must not feed image dimensions back into grid sizing.
     await phone.setViewportSize({width:390,height:844});
+    await phone.waitForTimeout(150);
     const initialPhoto=await phone.locator('.base-scene').boundingBox();
     for(let i=0;i<5;i++){
       await phone.evaluate(()=>{window.dispatchEvent(new Event('resize'));window.scrollTo(0,100);});
       await phone.locator('.lens:not([hidden]) [data-edge="2048"]').tap();
       const photo=await phone.locator('.base-scene').boundingBox();
-      assert.ok(Math.abs(photo.height-initialPhoto.height)<2,'Photo must not shrink after scrolling or recalculation');
+      assert.ok(Math.abs(photo.height-initialPhoto.height)<2,'Photo must not shrink after scrolling or recalculation: '+JSON.stringify({initialPhoto,photo}));
     }
     for(const height of [780,844,780,844]){
       await phone.setViewportSize({width:390,height});
