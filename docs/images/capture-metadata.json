@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "a10337e47389732acc7a776f7cef9af4f55e83bf",
+  "image": "repository scene.svg, not an actual concert photograph",
+  "examples": {
+    "defaultTarget": 200,
+    "framing": {
+      "baseline": 23,
+      "zoom": 4,
+      "target": 92
+    },
+    "comparison": {
+      "baseline": 23,
+      "focal": 70,
+      "totalPixels": 200000000,
+      "sensor": "4:3",
+      "output": "16:9",
+      "target": 200,
+      "result": {
+        "zoom": 2.857142857142857,
+        "pixels": 24500000,
+        "sensorW": 5715.476066494082,
+        "sensorH": 4286.607049870561,
+        "width": 5715,
+        "height": 3214,
+        "edge": 5715,
+        "continuousEdge": 5715.476066494082,
+        "recommendation": "8K",
+        "classification": "4K 以上",
+        "percent": 74.4140625
+      },
+      "maxRelative4K": 12.942654136082613
+    }
+  }
+}
