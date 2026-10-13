@@ -173,6 +173,25 @@ const {calculate,targetForEdge}=require('./calculator.js');
       console.log('Viewport bounds',JSON.stringify({viewport,rects}));
       for(const rect of rects){assert.ok(rect.height>20);assert.ok(rect.top>=0&&rect.bottom<=viewport.height+1,'Default view and results must fit in viewport: '+JSON.stringify({viewport,rect}));}
     }
+    const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+    await mobile.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:8765')?route.continue():route.abort());
+    const phone=await mobile.newPage();phone.on('pageerror',e=>errors.push(e.message));
+    await phone.goto('http://127.0.0.1:8765');
+    for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:932},{width:740,height:390}]){
+      await phone.setViewportSize(viewport);
+      assert.ok(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await phone.tap('#toggle-sidebar');
+      assert.equal(await phone.getAttribute('#toggle-sidebar','aria-expanded'),'true');
+      await phone.fill('#target','230');await phone.tap('#close-sidebar');
+      assert.equal(await phone.getAttribute('#toggle-sidebar','aria-expanded'),'false');
+      await phone.tap('.lens:not([hidden]) [data-edge="3840"]');
+      assert.equal(Number(await phone.locator('.lens:not([hidden]) .long-edge-input').inputValue()),3840);
+      await phone.tap('#change-photo');assert.ok(await phone.locator('#photo-dialog').isVisible());
+      assert.ok(await phone.evaluate(()=>document.activeElement.id==='photo-paste-area'));
+      const bounds=await phone.locator('#photo-dialog').boundingBox();assert.ok(bounds.width<=viewport.width);
+      await phone.tap('#close-photo-dialog');
+    }
+    await mobile.close();
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement, one-screen desktop layout and mobile parameter drawer.');
   }finally{if(browser)await browser.close();server.kill();}
