@@ -191,6 +191,21 @@ const {calculate,targetForEdge}=require('./calculator.js');
       const bounds=await phone.locator('#photo-dialog').boundingBox();assert.ok(bounds.width<=viewport.width);
       await phone.tap('#close-photo-dialog');
     }
+    // Repeated resizing/scrolling must not feed image dimensions back into grid sizing.
+    await phone.setViewportSize({width:390,height:844});
+    const initialPhoto=await phone.locator('.base-scene').boundingBox();
+    for(let i=0;i<5;i++){
+      await phone.evaluate(()=>{window.dispatchEvent(new Event('resize'));window.scrollTo(0,100);});
+      await phone.locator('.lens:not([hidden]) [data-edge="2048"]').tap();
+      const photo=await phone.locator('.base-scene').boundingBox();
+      assert.ok(Math.abs(photo.height-initialPhoto.height)<2,'Photo must not shrink after scrolling or recalculation');
+    }
+    for(const height of [780,844,780,844]){
+      await phone.setViewportSize({width:390,height});
+      await phone.waitForTimeout(100);
+      const photo=await phone.locator('.base-scene').boundingBox();
+      assert.ok(photo.height>50,'Photo must remain usable after viewport changes');
+    }
     await mobile.close();
     assert.deepEqual(errors,[]);
     console.log('Browser checks passed: arbitrary reference, linked sliders, full pixel input, add/delete, persistence, old settings migration, custom photo, crop movement, one-screen desktop layout and mobile parameter drawer.');

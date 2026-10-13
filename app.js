@@ -324,7 +324,7 @@ function fitPhotoViews(){
   const ratio=state.photoCrop?.ratio||Number(state.output.w)/Number(state.output.h)||16/9;
   document.querySelectorAll('.demo-grid>div').forEach(figure=>{
     const scene=figure.querySelector('.scene'),label=figure.querySelector('.demo-label');if(!scene)return;
-    const maxW=figure.clientWidth,maxH=Math.max(1,figure.clientHeight-label.getBoundingClientRect().height-5),w=Math.min(maxW,maxH*ratio);
+    const maxW=figure.clientWidth,maxH=Math.max(1,$('.demo-grid').clientHeight-label.getBoundingClientRect().height-5),w=Math.min(maxW,maxH*ratio);
     scene.style.width=w+'px';scene.style.height=(w/ratio)+'px';
   });
 }
