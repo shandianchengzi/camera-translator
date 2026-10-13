@@ -43,6 +43,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'docs/images');
     await page.locator('#crop-dialog').screenshot({path:path.join(out,'03-photo-crop.png')});
     await page.click('#cancel-crop');
 
+    await page.setViewportSize({width:1440,height:1080});
     await page.fill('#target','200');
     const tele=page.locator('.lens-param').nth(1);await tele.locator('summary').click();
     await tele.locator('[data-field="name"]').fill('候选 A · 五千万长焦');
